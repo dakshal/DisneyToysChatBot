@@ -5,6 +5,9 @@
  */
 package com.mlveda.disneychatbot.config;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 /**
  *
  * @author incredible
@@ -12,5 +15,6 @@ package com.mlveda.disneychatbot.config;
 public class AppConstant {
 
     public static String ACCESSTOKEN;
+    public static ArrayList<String> messages = new ArrayList<>(Arrays.asList("hi", "hello", "Hi", "Hello"));
     
 }

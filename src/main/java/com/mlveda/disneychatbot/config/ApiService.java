@@ -29,7 +29,7 @@ public interface ApiService {
     @POST("/messages")
     public void sendTextMessageToUser(@Body TextMessageResponse textMessage, Callback<Response> messageSent);
 
-    @POST("/messages?access_token=" + disney_access_token)
+    @POST("/messages")
     public void sendTextMessage(@Body TextMessageResponse textMessage, Callback<Response> messageSent);
 
     @POST("/messages")

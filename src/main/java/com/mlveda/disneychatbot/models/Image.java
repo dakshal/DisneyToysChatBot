@@ -24,8 +24,11 @@ public class Image {
 
     private Long position;
     private String updatedAt;
+
+    @SerializedName("product_id")
     private Long productId;
-    private ArrayList<Object> variantIds;
+    
+    private ArrayList<Long> variantIds;
 
     public long getId() {
         return id;
@@ -67,11 +70,11 @@ public class Image {
         this.productId = productId;
     }
 
-    public ArrayList<Object> getVariantIds() {
+    public ArrayList<Long> getVariantIds() {
         return variantIds;
     }
 
-    public void setVariantIds(ArrayList<Object> variantIds) {
+    public void setVariantIds(ArrayList<Long> variantIds) {
         this.variantIds = variantIds;
     }
 

@@ -21,6 +21,7 @@ import com.mlveda.disneychatbot.models.Entry;
 import com.mlveda.disneychatbot.models.Message;
 import com.mlveda.disneychatbot.models.Messaging;
 import com.mlveda.disneychatbot.models.FBChatBotWebhookResponse;
+import com.mlveda.disneychatbot.models.Image;
 import com.mlveda.disneychatbot.models.Option;
 import com.mlveda.disneychatbot.models.PagesInsertData;
 import com.mlveda.disneychatbot.models.Payload;
@@ -29,12 +30,14 @@ import com.mlveda.disneychatbot.models.Product;
 import com.mlveda.disneychatbot.models.ProductCollectionMapping;
 import com.mlveda.disneychatbot.models.Recipient;
 import com.mlveda.disneychatbot.models.RedirectButton;
+import com.mlveda.disneychatbot.models.ResponseModel;
 import com.mlveda.disneychatbot.models.SendAttachment;
 import com.mlveda.disneychatbot.models.SendAttachmentMessage;
 import com.mlveda.disneychatbot.models.SendAttachments;
 import com.mlveda.disneychatbot.models.SendMessage;
 import com.mlveda.disneychatbot.models.SendPayload;
 import com.mlveda.disneychatbot.models.TextMessageResponse;
+import com.mlveda.disneychatbot.models.Variant;
 import com.mongodb.BasicDBObject;
 import com.mongodb.Block;
 import com.mongodb.DB;
@@ -88,7 +91,7 @@ public class Webhook extends HttpServlet {
      * @throws IOException if an I/O error occurs
      */
     private final Gson gson = new Gson();
-    private final ApiService service = RestClient.instance.getApiService();
+//    private final ApiService service = RestClient.instance.getApiService();
 
 //    public String[] elementTitle = new String[]{"Casio Scientific", "Cltllzen CT-512 Basic", "Casio FX991ES Plus Scientific Calculator", "Cltllzen Notebook Type Scientific", "Texas Instruments BA II Plus Financial"};
 //    public String[] elementSubTitle = new String[]{"Price Rs. 390 + Rs. 50 delivery charge\n4.4 user rating", "Price Rs. 100 + Rs. 100 delivery charge\n3.5 user rating", "Price Rs. 895 + Rs. 100 delivery charge\n4.7 user rating", "Price Rs. 300 + Rs. 50 delivery charge\n3.7 user rating", "Price Rs. 2,850 + Rs. 100 delivery charge\n4.4 user rating"};
@@ -296,21 +299,21 @@ public class Webhook extends HttpServlet {
                 messageText = message.getText();
                 if (recipientID.equalsIgnoreCase("1694830117425781")) {
 //                    sendTextMessageToSensex(senderID, "Hello welcome to sensex");
-                } else if (messageText.equalsIgnoreCase("hi")) {
+                } else if (AppConstant.messages.contains(messageText)) {
                     PagesInsertData page = getStoreName(recipientID);
                     sendTextMessage(senderID, "hi, " + page.getName() + " welcomes you", page);
-//                    sendCollection(senderID, getCollectionList());
+                    sendCollection(senderID, getCollectionList(), page);
 //                    sendCalculator(senderID, messageText);
                 } else if (messageText.contains("address")) {
 //                    sendOrderDetails(senderID, messageText);
                 } else {
-                    sendTextMessage(senderID, "your result is: " + eval(messageText));
+                    sendTextMessage(senderID, "your result is: " + eval(messageText), getStoreName(recipientID));
                 }
             } else if (message.getAttachments() != null) {
-                sendTextMessage(senderID, "attachment received");
+                sendTextMessage(senderID, "attachment received", getStoreName(recipientID));
                 System.out.println(gson.toJson(message.getAttachments()));
             } else {
-                sendTextMessage(senderID, "Something went wrong");
+                sendTextMessage(senderID, "Something went wrong", getStoreName(recipientID));
             }
 //        if (!message.isNull("attachments")) {
 //            messageAttachments = message.getString("attachments");
@@ -340,7 +343,7 @@ public class Webhook extends HttpServlet {
 
     }
 
-    private void sendTextMessage(String recipientID, String messageText) {
+    private void sendTextMessage(String recipientID, String messageText, PagesInsertData page) {
 
         TextMessageResponse messageData = new TextMessageResponse(new Recipient(recipientID), new SendMessage(messageText));
 
@@ -352,7 +355,8 @@ public class Webhook extends HttpServlet {
 //        messageData.put("message", message);
         System.out.println(gson.toJson(messageData));
 
-        service.sendTextMessage(messageData, new Callback<Response>() {
+        AppConstant.ACCESSTOKEN = page.getAccessToken();
+        RestClient.instance.getApiService().sendTextMessage(messageData, new Callback<Response>() {
 
             @Override
             public void failure(RetrofitError re) {
@@ -624,40 +628,71 @@ public class Webhook extends HttpServlet {
 
         long timeOfPostBack = event.getTimestamp();
         String postbackMessage = event.getPostback().getPayload();
+        System.out.println();
+        System.out.println();
+        System.out.println();
+        System.out.println();
         System.out.println(postbackMessage);
+        System.out.println();
+        System.out.println();
+        System.out.println();
+        System.out.println();
 
-        if (postbackMessage.contains("collectionId")) {
-            sendProductList(senderID, getProducts(postbackMessage.split(":")[1]), postbackMessage.split(":")[1]);
-//            sendTextMessage(senderID, "Postback was Called with: "+ postbackMessage);
-        } else if (postbackMessage.contains("productID")) {
-            sendVarientList(senderID, getVarients(postbackMessage.split(":")[1].split("@")[1]), 1, postbackMessage.split(":")[1]);
-//            sendTextMessage(senderID, "Postback was Called with: "+ postbackMessage);
-        } else if (postbackMessage.contains("varient")) {
-            sendVarientList(senderID, getVarients(postbackMessage.split(":")[1].split("@")[1]), postbackMessage.split(":")[1].split("@").length - 1, postbackMessage.split(":")[1]);
-//            sendTextMessage(senderID, "Postback was Called with: "+ postbackMessage);
-        } else if (postbackMessage.contains("back")) {
+        PagesInsertData page = getStoreName(recipientID);
 
-            String[] choises = postbackMessage.split(":");
+        ResponseModel response = gson.fromJson(postbackMessage, ResponseModel.class);
 
-            if (choises[1].split("@").length == 2) {
-                sendCollection(senderID, getCollectionList());
-            } else if (choises[1].split("@").length == 3) {
-                sendProductList(senderID, getProducts(choises[1]), choises[1]);
-            } else {
-                String[] selectedCategories = choises[1].split("@");
-                String items = "";
-                for (int i = 0; i < selectedCategories.length - 1; i++) {
-                    items = items + selectedCategories[i] + "@";
-                }
-                sendVarientList(senderID, getVarients(choises[1].split("@")[1]), choises[1].split("@").length - 1, items.substring(0, items.length() - 1));
-            }
-//            sendVarientList(senderID, getVarients(choises[1].split("@")[1]), choises[1].split("@").length - 1, choises[1]);
-//            sendTextMessage(senderID, "Postback was Called with: "+ postbackMessage);
+        System.out.println(gson.toJson(response));
 
-        } else {
-            sendTextMessage(senderID, "Postback was Called");
+        if (response.getLength() == 0) {
+            sendCollection(senderID, getCollectionList(), page);
+        } else if (response.getLength() == 1) {
+            sendProductList(senderID, getProducts(response.getCollectionID()), response, page);
+        } else if (response.getLength() >= 2) {
+            sendVarientList(senderID, getVarients(response.getProductID()), response.getLength(), response, page);
         }
 
+//        if (postbackMessage.contains("collectionId")) {
+//            sendProductList(senderID, getProducts(postbackMessage.split(":")[1]), postbackMessage.split(":")[1], page);
+////            sendTextMessage(senderID, "Postback was Called with: "+ postbackMessage);
+//        } else if (postbackMessage.contains("productID")) {
+//            sendVarientList(senderID, getVarients(postbackMessage.split(":")[1].split("@")[1]), 1, postbackMessage.split(":")[1], page);
+////            sendTextMessage(senderID, "Postback was Called with: "+ postbackMessage);
+//        } else if (postbackMessage.contains("varient")) {
+//            sendVarientList(senderID, getVarients(postbackMessage.split(":")[1].split("@")[1]), postbackMessage.split(":")[1].split("@").length - 1, postbackMessage.split(":")[1], page);
+////            sendTextMessage(senderID, "Postback was Called with: "+ postbackMessage);
+//        } else if (postbackMessage.contains("back")) {
+//
+//            String[] choises = postbackMessage.split(":");
+//
+//            System.out.println(gson.toJson(choises));
+//
+//            if (choises[1].split("@").length == 1) {
+//                sendCollection(senderID, getCollectionList(), page);
+//            } else if (choises[1].split("@").length == 2) {
+//                sendProductList(senderID, getProducts(choises[1].split("@")[0]), choises[1].split("@")[0], page);
+//            } else {
+//                String[] selectedCategories = choises[1].split("@");
+//                String items = "";
+//                for (int i = 0; i < selectedCategories.length - 1; i++) {
+//                    items = items + selectedCategories[i] + "@";
+//                }
+//
+//                items = items.substring(0, items.length() - 1);
+//                System.out.println("items: -----> " + gson.toJson(items));
+//
+//                sendVarientList(senderID, getVarients(items.split("@")[1]), items.split("@").length - 1, items, page);
+//            }
+////            sendVarientList(senderID, getVarients(choises[1].split("@")[1]), choises[1].split("@").length - 1, choises[1]);
+////            sendTextMessage(senderID, "Postback was Called with: "+ postbackMessage);
+//
+//        } else if (postbackMessage.contains("home")) {
+//
+//            sendCollection(senderID, getCollectionList(), page);
+//
+//        } else {
+//            sendTextMessage(senderID, "Postback was Called", page);
+//        }
 //        if (postbackMessage.contains("buy")) {
 //            sendTextMessage(senderID, "Enter your address for delivery:");
 //        } else {
@@ -788,7 +823,7 @@ public class Webhook extends HttpServlet {
 //        }
 //    }
 
-    private void sendCollection(String recepientID, ArrayList<Collection> collection) {
+    private void sendCollection(String recepientID, ArrayList<Collection> collection, PagesInsertData page) {
 
         SendAttachments attachment = new SendAttachments();
 
@@ -805,7 +840,7 @@ public class Webhook extends HttpServlet {
             if (collection.get(i).getPublishedAt() != null) {
 
                 ArrayList<Button> button = new ArrayList<Button>();
-                button.add(new PayloadButton("postback", "select " + collection.get(i).getTitle(), "collectionId:" + collection.get(i).getId()));
+                button.add(new PayloadButton("postback", "select " + collection.get(i).getTitle(), gson.toJson(new ResponseModel(collection.get(i).getId(), 1))));
                 button.add(new RedirectButton("web_url", "visit website", "https://www.mlveda.com"));
 
                 Element element = new Element();
@@ -831,7 +866,8 @@ public class Webhook extends HttpServlet {
 
         System.out.println(gson.toJson(messageData));
 
-        service.sendAttachmentToUser(messageData, new Callback<Response>() {
+        AppConstant.ACCESSTOKEN = page.getAccessToken();
+        RestClient.instance.getApiService().sendAttachmentToUser(messageData, new Callback<Response>() {
 
             @Override
             public void failure(RetrofitError re) {
@@ -846,7 +882,7 @@ public class Webhook extends HttpServlet {
 
     }
 
-    private void sendProductList(String recepientID, ArrayList<Product> products, String collectionID) {
+    private void sendProductList(String recepientID, ArrayList<Product> products, ResponseModel response, PagesInsertData page) {
 
         SendAttachments attachment = new SendAttachments();
 
@@ -867,8 +903,13 @@ public class Webhook extends HttpServlet {
                 System.out.println("product is published");
 
                 ArrayList<Button> button = new ArrayList<Button>();
-                button.add(new PayloadButton("postback", "select " + prod.getTitle(), "productID:" + collectionID + "@" + prod.getId()));
-                button.add(new RedirectButton("postback", "back", "back"));
+                response.setProductID(prod.getId());
+                response.setLength(2);
+                button.add(new PayloadButton("postback", "select " + prod.getTitle(), gson.toJson(response)));
+                response.setLength(0);
+                button.add(new PayloadButton("postback", "back", gson.toJson(response)));
+                button.add(new PayloadButton("postback", "home", gson.toJson(new ResponseModel(0, 0))));
+//                button.add(new RedirectButton("postback", "back", "back"));
 
                 Element element = new Element();
                 if (prod.getImages().size() > 0) {
@@ -895,11 +936,12 @@ public class Webhook extends HttpServlet {
 
         if (elements.size() == 0) {
 
-            sendTextMessage(recepientID, "No Products to show");
+            sendTextMessage(recepientID, "No Products to show", page);
 
         } else {
 
-            service.sendAttachmentToUser(messageData, new Callback<Response>() {
+            AppConstant.ACCESSTOKEN = page.getAccessToken();
+            RestClient.instance.getApiService().sendAttachmentToUser(messageData, new Callback<Response>() {
 
                 @Override
                 public void failure(RetrofitError re) {
@@ -915,7 +957,7 @@ public class Webhook extends HttpServlet {
 
     }
 
-    private void sendVarientList(String recepientID, Product product, int position, String otherParams) {
+    private void sendVarientList(String recepientID, Product product, int position, ResponseModel otherParams, PagesInsertData page) {
 
         SendAttachments attachment = new SendAttachments();
 
@@ -930,48 +972,294 @@ public class Webhook extends HttpServlet {
 //        System.out.println("products: " + products.size());
         System.out.println("product is published");
 
-        System.out.println("option size: " + product.getOptions().size());
+        System.out.println("option size: " + product.getOptions().size() + "position: ----------->" + position);
 
-        for (Option option : product.getOptions()) {
-            System.out.println("position : " + option.getPosition() + " selected: " + position);
-            if (option.getPosition() == position) {
-                System.out.println("varient size: " + option.getValues().size());
-                for (String value : option.getValues()) {
-                    ArrayList<Button> button = new ArrayList<Button>();
-                    button.add(new PayloadButton("postback", "select " + value + " " + option.getName(), "varients:" + otherParams + "@" + value));
-                    button.add(new RedirectButton("postback", "back", "back:" + otherParams));
+        if (product.getOptions().size() + 2 <= position) {
 
-                    Element element = new Element();
-                    if (product.getImages().size() > 0) {
-                        element.setImage_url(product.getImages().get(0).getSrc());
-                    }
-                    element.setButtons(button);
-                    element.setTitle(value + " " + product.getTitle());
-                    element.setSubtitle("");
+//            sendTextMessage(recepientID, "No more varients to show", page);
+            MongoDatabase db = MongoProvider.getInstance();
 
-                    elements.add(element);
+//            String ids[] = otherParams.split("@");
+            int id = 0;
+            System.out.println("collectionID: " + otherParams.getCollectionID() + "other params:----> " + gson.toJson(otherParams));
+
+            FindIterable<Document> coll = db.getCollection("disneytoys.myshopify.com_collection_new").find(eq("id", otherParams.getCollectionID()));
+
+            System.out.println();
+            System.out.println();
+            System.out.println("collection size:-> " + gson.toJson(coll.first()));
+            System.out.println();
+            System.out.println();
+
+            Collection collection = gson.fromJson(gson.toJson(coll.first()), Collection.class);
+
+            OUTER:
+            for (id = 0; id < product.getVariants().size(); id++) {
+                switch (position) {
+                    case 3:
+                        if (product.getVariants().get(id).getOption1().equalsIgnoreCase(otherParams.getOption1())) {
+                            System.out.println("id:----->>> " + id);
+                            break OUTER;
+                        }
+                        break;
+                    case 4:
+                        if (product.getVariants().get(id).getOption1().equalsIgnoreCase(otherParams.getOption1()) && product.getVariants().get(id).getOption2().equalsIgnoreCase(otherParams.getOption2())) {
+                            System.out.println("id:----->>> " + id);
+                            break OUTER;
+                        }
+                        break;
+                    case 5:
+                        if (product.getVariants().get(id).getOption1().equalsIgnoreCase(otherParams.getOption1()) && product.getVariants().get(id).getOption2().equalsIgnoreCase(otherParams.getOption2()) && product.getVariants().get(id).getOption3().equalsIgnoreCase(otherParams.getOption3())) {
+                            System.out.println("id:----->>> " + id);
+                            break OUTER;
+                        }
+                        break;
                 }
-                break;
             }
-        }
 
-        payload.setElements(elements);
+            if (id < product.getVariants().size()) {
+                System.out.println("collection:----->>> " + gson.toJson(collection));
+                System.out.println("page:----->>> " + gson.toJson(page));
+                otherParams.setLength(otherParams.getLength() - 1);
 
-        attachment.setPayload(payload);
+//            switch (otherParams.getLength()) {
+//                case 1:
+//                    otherParams.setOption1(null);
+//                    break;
+//                case 2:
+//                    otherParams.setOption2(null);
+//                    otherParams.setLength(otherParams.getLength() - 1);
+//                    break;
+//                case 3:
+//                    otherParams.setOption3(null);
+//                    otherParams.setLength(otherParams.getLength() - 1);
+//                    break;
+//            }
+                ArrayList<Button> button = new ArrayList<>();
+                button.add(new RedirectButton("web_url", "Buy @ ₹ " + product.getVariants().get(id).getPrice(), "http://" + page.getShopName() + ".myshopify.com/collections/" + collection.getHandle() + "/products/" + product.getHandle() + "?variant=" + product.getVariants().get(id).getId()));
+                button.add(new PayloadButton("postback", "back", gson.toJson(otherParams)));
+                button.add(new PayloadButton("postback", "home", gson.toJson(new ResponseModel(0, 0))));
+                Element element = new Element();
+                Variant variant = product.getVariants().get(id);
+                if (product.getImages().size() > 0) {
+                                if (variant.getImageId() != 0) {
+                                    for(Image images: product.getImages()){
+                                        if(images.getId() == variant.getImageId()){
+                                            element.setImage_url(images.getSrc());
+//                                            imageURL.add(images.getSrc());
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    element.setImage_url(product.getImages().get(0).getSrc());
+//                                    imageURL.add(product.getImages().get(0).getSrc());
+                                }
+                            } else {
+//                    element.setImage_url(product.getImages().get(0).getSrc());
+//                                imageURL.add(null);
+                            }
+//                if (product.getImages().size() > 0) {
+//                    element.setImage_url(product.getImages().get(0).getSrc());
+//                }
+                element.setButtons(button);
+                element.setTitle(product.getTitle());
+                element.setSubtitle("");
 
-        System.out.println("message generated");
+                elements.add(element);
 
-        SendAttachmentMessage messageData = new SendAttachmentMessage(new Recipient(recepientID), new SendAttachment(attachment));
+                payload.setElements(elements);
 
-        System.out.println(gson.toJson(messageData));
+                attachment.setPayload(payload);
 
-        if (elements.size() == 0) {
+                System.out.println("message generated");
 
-            sendTextMessage(recepientID, "No more varients to show");
-            sendTextMessage(recepientID, otherParams);
+                SendAttachmentMessage messageData = new SendAttachmentMessage(new Recipient(recepientID), new SendAttachment(attachment));
 
+                System.out.println(gson.toJson(messageData));
+
+                AppConstant.ACCESSTOKEN = page.getAccessToken();
+                RestClient.instance.getApiService().sendAttachmentToUser(messageData, new Callback<Response>() {
+
+                    @Override
+                    public void failure(RetrofitError re) {
+                        System.err.println("something went wrong on facebook response");
+                    }
+
+                    @Override
+                    public void success(Response response, Response rspns) {
+                        System.out.println("facebook response: " + gson.toJson(rspns));
+                    }
+                });
+            } else {
+                sendTextMessage(recepientID, "something went wrong!!! Please try again.:)", page);
+            }
+//            sendTextMessage(recepientID, otherParams, page);
         } else {
-            service.sendAttachmentToUser(messageData, new Callback<Response>() {
+
+            ArrayList<String> options = new ArrayList<>();
+            ArrayList<String> imageURL = new ArrayList<>();
+
+            switch (position) {
+                case 2:
+                    for (Variant variant : product.getVariants()) {
+                        if (!options.contains(variant.getOption1())) {
+                            options.add(variant.getOption1());
+                            if (product.getImages().size() > 0) {
+                                if (variant.getImageId() != 0) {
+                                    for(Image images: product.getImages()){
+                                        if(images.getId() == variant.getImageId()){
+                                            imageURL.add(images.getSrc());
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    imageURL.add(product.getImages().get(0).getSrc());
+                                }
+                            } else {
+                                imageURL.add(null);
+                            }
+                        }
+                    }
+                    break;
+                case 3: {
+                    String option1 = otherParams.getOption1();
+                    for (Variant variant : product.getVariants()) {
+                        if (!options.contains(variant.getOption2()) && variant.getOption1().equalsIgnoreCase(option1)) {
+                            options.add(variant.getOption2());
+                            System.out.println();
+                            System.out.println();
+                            System.out.println(gson.toJson(variant));
+                            System.out.println();
+                            System.out.println();
+                            if (product.getImages().size() > 0) {
+                                if (variant.getImageId() != 0) {
+                                    for(Image images: product.getImages()){
+                                        if(images.getId() == variant.getImageId()){
+                                            imageURL.add(images.getSrc());
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    imageURL.add(product.getImages().get(0).getSrc());
+                                }
+                            } else {
+                                imageURL.add(null);
+                            }
+                        }
+                    }
+                    break;
+                }
+                case 4: {
+                    String option1 = otherParams.getOption1();
+                    String option2 = otherParams.getOption2();
+                    for (Variant variant : product.getVariants()) {
+                        if (!options.contains(variant.getOption3()) && variant.getOption1().equals(option1) && variant.getOption2().equals(option2)) {
+                            options.add(variant.getOption3());
+                            if (product.getImages().size() > 0) {
+                                if (variant.getImageId() != 0) {
+                                    for(Image images: product.getImages()){
+                                        if(images.getId() == variant.getImageId()){
+                                            imageURL.add(images.getSrc());
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    imageURL.add(product.getImages().get(0).getSrc());
+                                }
+                            } else {
+                                imageURL.add(null);
+                            }
+                        }
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+
+//            for (Option option : product.getOptions()) {
+//                System.out.println("position : " + option.getPosition() + " selected: " + position);
+//                if (option.getPosition() == position - 1) {
+
+                    System.out.println("varient size: " + gson.toJson(options));
+                    for (int i=0 ; i<options.size() ; i++) {
+                        String value = options.get(i);
+                        switch (position - 1) {
+                            case 1:
+                                otherParams.setOption1(value);
+                                break;
+                            case 2:
+                                otherParams.setOption2(value);
+                                break;
+                            case 3:
+                                otherParams.setOption3(value);
+                                break;
+                        }
+                        otherParams.setLength(position + 1);
+                        ArrayList<Button> button = new ArrayList<>();
+                        button.add(new PayloadButton("postback", "" + value, gson.toJson(otherParams)));
+//                        switch (otherParams.getLength()) {
+//                            case 1:
+//                                otherParams.setOption1(null);
+//                                otherParams.setProductID(0);
+//                                break;
+//                            case 2:
+//                                otherParams.setOption1(null);
+//                                otherParams.setOption2(null);
+//                                otherParams.setLength(otherParams.getLength() - 1);
+//                                break;
+//                            case 3:
+//                                otherParams.setOption2(null);
+//                                otherParams.setOption3(null);
+//                                otherParams.setLength(otherParams.getLength() - 1);
+//                                break;
+//                        }
+//                    button.add(new RedirectButton("postback", "back", "back:" + otherParams));
+                        otherParams.setLength(position - 1);
+                        button.add(new PayloadButton("postback", "back", gson.toJson(otherParams)));
+                        button.add(new PayloadButton("postback", "home", gson.toJson(new ResponseModel(0, 0))));
+                        Element element = new Element();
+//                        if (product.getImages().size() > 0) {
+//                            element.setImage_url(product.getImages().get(0).getSrc());
+//                        }
+                        if (imageURL.get(i)!=null) {
+                            element.setImage_url(imageURL.get(i));
+                        }
+                        element.setButtons(button);
+                        element.setTitle("Select " + product.getOptions().get(position - 2).getName());
+                        element.setSubtitle(product.getTitle());
+
+                        elements.add(element);
+
+                    }
+//                    otherParams.setLength(position - 1);
+//                    button.add(new PayloadButton("postback", "back", gson.toJson(otherParams)));
+//                    button.add(new PayloadButton("postback", "home", gson.toJson(new ResponseModel(0, 0))));
+//                    Element element = new Element();
+//                    if (product.getImages().size() > 0) {
+//                        element.setImage_url(product.getImages().get(0).getSrc());
+//                    }
+//                    element.setButtons(button);
+//                    element.setTitle("Select " + product.getOptions().get(position - 1).getName());
+//                    element.setSubtitle(product.getTitle());
+//
+//                    elements.add(element);
+//                    break;
+//                }
+//            }
+
+            payload.setElements(elements);
+
+            attachment.setPayload(payload);
+
+            System.out.println("message generated");
+
+            SendAttachmentMessage messageData = new SendAttachmentMessage(new Recipient(recepientID), new SendAttachment(attachment));
+
+            System.out.println(gson.toJson(messageData));
+
+            AppConstant.ACCESSTOKEN = page.getAccessToken();
+            RestClient.instance.getApiService().sendAttachmentToUser(messageData, new Callback<Response>() {
 
                 @Override
                 public void failure(RetrofitError re) {
@@ -986,13 +1274,13 @@ public class Webhook extends HttpServlet {
         }
     }
 
-    private ArrayList<Product> getProducts(String collectionID) {
+    private ArrayList<Product> getProducts(long collectionID) {
         MongoDatabase db = MongoProvider.getInstance();
 
 //        MongoCollection<Product> products = db.getCollection("disneytoys.myshopify.com_products", Product.class);
         System.out.println("collectionID: " + collectionID);
 
-        FindIterable<Document> coll = db.getCollection("disneytoys.myshopify.com_collection_mapping_new").find(eq("collection_id", Long.parseLong(collectionID)));
+        FindIterable<Document> coll = db.getCollection("disneytoys.myshopify.com_collection_mapping_new").find(eq("collection_id", collectionID));
 
         final Type collectionType = new TypeToken<ArrayList<ProductCollectionMapping>>() {
         }.getType();
@@ -1053,14 +1341,14 @@ public class Webhook extends HttpServlet {
         return products;
     }
 
-    private Product getVarients(String productID) {
+    private Product getVarients(long productID) {
         MongoDatabase db = MongoProvider.getInstance();
 
 //        MongoCollection<Product> products = db.getCollection("disneytoys.myshopify.com_products", Product.class);
         System.out.println("collectionID: " + productID);
 
         System.out.println("productID: " + productID);
-        FindIterable<Document> prod = db.getCollection("disneytoys.myshopify.com_products_new").find(eq("id", Long.parseLong(productID)));
+        FindIterable<Document> prod = db.getCollection("disneytoys.myshopify.com_products_new").find(eq("id", productID));
         System.out.println();
         System.out.println("prod: " + prod.toString());
         System.out.println();
@@ -1100,7 +1388,7 @@ public class Webhook extends HttpServlet {
         return facebookPage;
     }
 
-    private void sendTextMessage(String recipientID, String messageText, PagesInsertData page) {
+    private void sendTextMessages(String recipientID, String messageText, PagesInsertData page) {
 
         TextMessageResponse messageData = new TextMessageResponse(new Recipient(recipientID), new SendMessage(messageText));
 

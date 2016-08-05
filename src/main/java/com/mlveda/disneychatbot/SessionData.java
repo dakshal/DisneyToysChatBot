@@ -35,7 +35,7 @@ public class SessionData extends HttpServlet {
             throws ServletException, IOException {
         HttpSession session = request.getSession(true);
 //        session.setAttribute("shop", request.getParameter("shop"));
-        session.setAttribute("shop", "disney_toys");
+        session.setAttribute("shop", "disneytoys");
     }
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">

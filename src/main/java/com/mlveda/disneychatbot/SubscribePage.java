@@ -77,7 +77,7 @@ public class SubscribePage extends HttpServlet {
 //            return;             //break flow
 //        }
 
-        String storename = "testing";
+        String storename = "disneytoys";
 //        String storename = session.getAttribute("shop").toString();//request.getParameter("storename");
         if (request.getMethod().equals("POST")) {
 
